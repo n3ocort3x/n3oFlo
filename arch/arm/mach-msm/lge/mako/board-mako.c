@@ -78,6 +78,87 @@
 
 #include <linux/keyreset.h>
 #include <asm/system_info.h>
+/* Copyright (c) 2011-2012, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012,2013 LGE Inc.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ */
+#include <linux/kernel.h>
+#include <linux/platform_device.h>
+#include <linux/gpio.h>
+#include <linux/io.h>
+#include <linux/irq.h>
+#include <linux/i2c.h>
+#ifdef CONFIG_SMB349_CHARGER
+#include <linux/i2c/smb349.h>
+#endif
+#include <linux/slimbus/slimbus.h>
+#include <linux/mfd/wcd9xxx/core.h>
+#include <linux/mfd/wcd9xxx/pdata.h>
+#include <linux/mfd/pm8xxx/misc.h>
+#include <linux/msm_ssbi.h>
+#include <linux/spi/spi.h>
+#include <linux/dma-contiguous.h>
+#include <linux/dma-mapping.h>
+#include <linux/platform_data/qcom_crypto_device.h>
+#include <linux/msm_ion.h>
+#include <linux/memory.h>
+#include <linux/memblock.h>
+#include <linux/msm_thermal.h>
+#include <linux/i2c/isa1200.h>
+#include <linux/gpio_keys.h>
+#include <asm/mach-types.h>
+#include <asm/mach/arch.h>
+#include <asm/hardware/gic.h>
+#include <asm/mach/mmc.h>
+#include <linux/platform_data/qcom_wcnss_device.h>
+
+#include <mach/board.h>
+#include <mach/msm_iomap.h>
+#include <mach/ion.h>
+#include <linux/usb/msm_hsusb.h>
+#include <linux/usb/android.h>
+#include <mach/socinfo.h>
+#include <mach/msm_spi.h>
+#include "timer.h"
+#include "devices.h"
+#include <mach/gpiomux.h>
+#include <mach/rpm.h>
+#ifdef CONFIG_ANDROID_PMEM
+#include <linux/android_pmem.h>
+#endif
+#include <mach/msm_memtypes.h>
+#include <linux/bootmem.h>
+#include <asm/setup.h>
+#include <mach/dma.h>
+#include <mach/msm_dsps.h>
+#include <mach/msm_bus_board.h>
+#include <mach/cpuidle.h>
+#include <mach/mdm2.h>
+#include <linux/msm_tsens.h>
+#include <mach/msm_xo.h>
+#ifdef CONFIG_MSM_RTB
+#include <mach/msm_rtb.h>
+#endif
+#ifdef CONFIG_IR_GPIO_CIR
+#include <media/gpio-ir-recv.h>
+#endif
+#include <linux/fmem.h>
+#include <mach/restart.h>
+#include <mach/board_lge.h>
+
+#include <mach/board_lge.h>
+
+#include <linux/keyreset.h>
+#include <asm/system_info.h>
 #include <asm/system_misc.h>
 
 #include "msm_watchdog.h"
@@ -95,33 +176,34 @@
 #define MSM_PMEM_SIZE              0x4000000 /* 64 Mbytes */
 
 #ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
-#define HOLE_SIZE		0x20000
-#define MSM_CONTIG_MEM_SIZE  0x65000
+#define HOLE_SIZE                                0x20000
+#define MSM_CONTIG_MEM_SIZE                0x65000
 #ifdef CONFIG_MSM_IOMMU
 
-#define MSM_ION_MM_SIZE		0x3800000
-#define MSM_ION_SF_SIZE		0
-#define MSM_ION_QSECOM_SIZE	0x780000 /* (7.5MB) */
-#define MSM_ION_HEAP_NUM	7
+#define MSM_ION_MM_SIZE                0x3800000
+#define MSM_ION_SF_SIZE                0
+#define MSM_ION_QSECOM_SIZE        0x780000 /* (7.5MB) */
+#define MSM_ION_HEAP_NUM        8
 #else
-#define MSM_ION_MM_SIZE		MSM_PMEM_ADSP_SIZE
-#define MSM_ION_SF_SIZE		MSM_PMEM_SIZE
-#define MSM_ION_QSECOM_SIZE	0x600000 /* (6MB) */
-#define MSM_ION_HEAP_NUM	8
+#define MSM_ION_MM_SIZE                MSM_PMEM_ADSP_SIZE
+#define MSM_ION_SF_SIZE                MSM_PMEM_SIZE
+#define MSM_ION_QSECOM_SIZE        0x600000 /* (6MB) */
+#define MSM_ION_HEAP_NUM        8
 #endif
-#define MSM_ION_MM_FW_SIZE	(0x200000 - HOLE_SIZE) /* (2MB - 128KB) */
-#define MSM_ION_MFC_SIZE	SZ_8K
-#define MSM_ION_AUDIO_SIZE	MSM_PMEM_AUDIO_SIZE
+#define MSM_ION_MM_FW_SIZE        (0x200000 - HOLE_SIZE) /* (2MB - 128KB) */
+#define MSM_ION_MFC_SIZE        SZ_8K
+#define MSM_ION_AUDIO_SIZE        MSM_PMEM_AUDIO_SIZE
 #else
 #define MSM_CONTIG_MEM_SIZE  0x110C000
-#define MSM_ION_HEAP_NUM	1
+#define MSM_ION_HEAP_NUM        1
 #endif
 
 #define APQ8064_FIXED_AREA_START (0xa0000000 - (MSM_ION_MM_FW_SIZE + \
-							HOLE_SIZE))
-#define MAX_FIXED_AREA_SIZE	0x10000000
-#define MSM_MM_FW_SIZE		(0x200000 - HOLE_SIZE)
-#define APQ8064_FW_START	APQ8064_FIXED_AREA_START
+                                                        HOLE_SIZE))
+#define MAX_FIXED_AREA_SIZE        0x10000000
+#define MSM_MM_FW_SIZE                (0x200000 - HOLE_SIZE)
+#define APQ8064_FW_START        APQ8064_FIXED_AREA_START
+#define MSM_ION_ADSP_SIZE        SZ_8M
 
 /* PCIe power enable pmic gpio */
 #define PCIE_PWR_EN_PMIC_GPIO 13
